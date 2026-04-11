@@ -2,5 +2,5 @@
 *.png
 *.jpeg
 *.bmp
-env
+*.env
 temp
