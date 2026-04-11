@@ -63,8 +63,13 @@ def preprocess_image(image_path):
     tensor_image = processed["image"].unsqueeze(0).to(DEVICE)
     return original_image, tensor_image
 
-def predict_mask(model, tensor_image):
-    """Generate a mask prediction using the model."""
+def predict_mask(model, tensor_image)->np.ndarray:
+    """
+    Generate a mask prediction using the model.
+
+    Returns:
+        predicted mask (nd.array) : shape (1024,1024), dtype=float32.
+    """
     with torch.no_grad():
         prediction = model(tensor_image)
         return prediction.squeeze().sigmoid().cpu().numpy()
@@ -77,7 +82,7 @@ def create_opacity_mask(predicted_mask):
         predicted_mask: The predicted mask from the model.
 
     Returns:
-        The opacity mask.
+        opacity mask (nd.array) : shape (1024,1024), dtype=uint8.
     """
     opacity_mask = np.zeros_like(predicted_mask, dtype=np.uint8)
     opacity_mask[predicted_mask > 0.2] = 50
@@ -166,9 +171,9 @@ def process_directory_recursively(input_dir, output_dir, model):
                         print(f"Processing: {display_path}")
                         original_image, tensor_image = preprocess_image(png_path)
                         predicted_mask = predict_mask(model, tensor_image)
-
+                        # print("Predicted mask: ", type(predicted_mask), predicted_mask.shape, predicted_mask.dtype)
                         opacity_mask = create_opacity_mask(predicted_mask)
-
+                        # print("Opacity mask: ", type(opacity_mask), opacity_mask.shape, opacity_mask.dtype)
                         output_filename = os.path.splitext(file)[0] + '.png'
                         save_results(original_image, opacity_mask, output_dir, 
                                     os.path.join(relative_path, output_filename))
