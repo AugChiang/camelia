@@ -1,7 +1,29 @@
 import os
 import subprocess
-import argparse
+from argparse import ArgumentParser
 import shutil
+
+
+def cli():
+    parser = ArgumentParser(description="Pipeline to connect segmentation and inpainting.")
+    parser.add_argument(
+        "--model_type", 
+        required=True, 
+        choices=["black_bars", "white_bars", "transparent_black"],
+        help="Model type for segmentation."
+    )
+    parser.add_argument(
+        "--seg_model_type", 
+        default="smp", 
+        choices=["smp", "sam3"],
+        help="Segmentation model type for censor bars' segmentation."
+    )
+    parser.add_argument(
+        "--clean_temp",
+        action="store_true", 
+        help="Delete temporary files after processing is complete."
+    )
+    return parser.parse_args()
 
 def get_relative_path(full_path, workspace_root):
     """Convert a full path to a relative path from workspace root."""
@@ -9,7 +31,7 @@ def get_relative_path(full_path, workspace_root):
         return full_path[len(workspace_root):].lstrip(os.sep)
     return full_path
 
-def run_segmentation(model_type, segmentation_script, input_dir, output_dir, workspace_root):
+def run_smp_segmentation(model_type, segmentation_script, input_dir, output_dir, workspace_root):
     """Run the segmentation step."""
     print(f"Running segmentation with model type: {model_type}")
     
@@ -68,6 +90,17 @@ def run_segmentation(model_type, segmentation_script, input_dir, output_dir, wor
     
     print("Segmentation completed", flush=True)
     return True
+
+def run_sam3_segmentation(model_type, segmentation_script, input_dir, output_dir, workspace_root):
+    """Run the SAM3 segmentation step."""
+    print(f"Running SAM3 segmentation with model type: {model_type}")
+    
+    # Placeholder for actual SAM3 segmentation implementation
+    # This would involve calling the SAM3 segmentation script in a similar manner to run_smp_segmentation
+    # and ensuring that the necessary environment variables and paths are set correctly.
+    
+    print("SAM3 segmentation is currently not implemented. Please implement this function to run SAM3 segmentation.")
+    return False
 
 def run_inpainting(in_dir, mask_dir, out_dir, checkpoint, inpainting_script, workspace_root, debug_dir=None):
     """Run the inpainting step."""
@@ -146,13 +179,8 @@ def run_inpainting(in_dir, mask_dir, out_dir, checkpoint, inpainting_script, wor
     return True
 
 def main():
-    parser = argparse.ArgumentParser(description="Pipeline to connect segmentation and inpainting.")
-    parser.add_argument("--model_type", required=True, choices=["black_bars", "white_bars", "transparent_black"],
-                        help="Model type for segmentation.")
-    parser.add_argument("--clean_temp", action="store_true", 
-                        help="Delete temporary files after processing is complete.")
-    args = parser.parse_args()
-    
+    args = cli()
+
     workspace_root = os.path.dirname(os.path.abspath(__file__))
     camelia_input = os.path.join(workspace_root, "camelia-decensor", "input")
     camelia_output = os.path.join(workspace_root, "camelia-decensor", "output")
@@ -166,13 +194,27 @@ def main():
     print(f"Temp directory: {get_relative_path(camelia_temp, workspace_root)}")
 
     # Run segmentation
-    segmentation_success = run_segmentation(
-        model_type=args.model_type,
-        segmentation_script=os.path.join(workspace_root, "smp-segmentation", "run_segmentation.py"),
-        input_dir=camelia_input,
-        output_dir=camelia_temp,
-        workspace_root=workspace_root
-    )
+    if args.seg_model_type == "smp":
+        print("Selected segmentation model: SMP", flush=True)
+        segmentation_success = run_smp_segmentation(
+            model_type=args.model_type,
+            segmentation_script=os.path.join(workspace_root, "smp-segmentation", "run_segmentation.py"),
+            input_dir=camelia_input,
+            output_dir=camelia_temp,
+            workspace_root=workspace_root
+        )
+    elif args.seg_model_type == "sam3":
+        print("Selected segmentation model: SAM3", flush=True)
+        # Placeholder for SAM3 segmentation function, which would be implemented similarly to run_smp_segmentation
+        segmentation_success = run_sam3_segmentation(
+            model_type=args.model_type,
+            segmentation_script=os.path.join(workspace_root, "sam3-segmentation", "run_segmentation.py"),
+            input_dir=camelia_input,
+            output_dir=camelia_temp,
+            workspace_root=workspace_root
+        )
+    else:
+        raise ValueError(f"Unsupported segmentation model type: {args.seg_model_type}")
 
     if not segmentation_success:
         print("Segmentation failed. Exiting pipeline.", flush=True)
