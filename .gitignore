@@ -3,4 +3,6 @@
 *.jpeg
 *.bmp
 *.env
+*.pt
+*.pth
 temp
