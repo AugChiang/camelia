@@ -95,12 +95,61 @@ def run_sam3_segmentation(model_type, segmentation_script, input_dir, output_dir
     """Run the SAM3 segmentation step."""
     print(f"Running SAM3 segmentation with model type: {model_type}")
     
-    # Placeholder for actual SAM3 segmentation implementation
-    # This would involve calling the SAM3 segmentation script in a similar manner to run_smp_segmentation
-    # and ensuring that the necessary environment variables and paths are set correctly.
+    script_path = os.path.abspath(segmentation_script)
+    script_dir = os.path.dirname(script_path)
+    input_dir_abs = os.path.abspath(input_dir)
+    output_dir_abs = os.path.abspath(output_dir)
     
-    print("SAM3 segmentation is currently not implemented. Please implement this function to run SAM3 segmentation.")
-    return False
+    current_dir = os.getcwd()
+    
+    # Setup environment variables to ensure unbuffered output
+    env = os.environ.copy()
+    env['PYTHONUNBUFFERED'] = '1'
+    env['PYTHONIOENCODING'] = 'UTF-8'
+    env['WORKSPACE_ROOT'] = workspace_root  # Pass workspace root to child processes
+    
+    try:
+        if script_dir:
+            os.chdir(script_dir)
+        
+        script_name = os.path.basename(script_path)
+        command = [
+            "python",
+            "-u",  # Unbuffered mode
+            script_name,
+            "--model_type", model_type,
+            "--input_dir", input_dir_abs,
+            "--output_dir", output_dir_abs
+        ]
+        
+        # Use subprocess.Popen for more control over real-time output
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True, 
+            bufsize=1,  # Line buffered
+            universal_newlines=True,
+            env=env
+        )
+        
+        # Process and print output line by line in real-time
+        for line in iter(process.stdout.readline, ''):
+            if line.strip():
+                print(line.strip(), flush=True)
+                
+        process.stdout.close()
+        return_code = process.wait()
+        
+        if return_code != 0:
+            print(f"SAM3 segmentation process exited with code {return_code}", flush=True)
+            return False
+            
+    finally:
+        os.chdir(current_dir)
+    
+    print("SAM3 segmentation completed", flush=True)
+    return True
 
 def run_inpainting(in_dir, mask_dir, out_dir, checkpoint, inpainting_script, workspace_root, debug_dir=None):
     """Run the inpainting step."""
