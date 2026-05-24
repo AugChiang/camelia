@@ -1,8 +1,15 @@
 *.jpg
 *.png
 *.jpeg
+*.webp
 *.bmp
 *.env
 *.pt
 *.pth
 temp
+
+__pycache__/
+
+# settings
+.gemini
+.vscode
