@@ -23,6 +23,11 @@ def cli():
         action="store_true", 
         help="Delete temporary files after processing is complete."
     )
+    parser.add_argument(
+        "--inpaint-only",
+        action="store_true", 
+        help="Run inpainting only."
+    )
     return parser.parse_args()
 
 def get_relative_path(full_path, workspace_root):
@@ -241,47 +246,48 @@ def main():
     print(f"Input directory: {get_relative_path(camelia_input, workspace_root)}")
     print(f"Output directory: {get_relative_path(camelia_output, workspace_root)}")
     print(f"Temp directory: {get_relative_path(camelia_temp, workspace_root)}")
+    if not args.inpaint_only:
+        # Run segmentation
+        if args.seg_model_type == "smp":
+            print("Selected segmentation model: SMP", flush=True)
+            segmentation_success = run_smp_segmentation(
+                model_type=args.model_type,
+                segmentation_script=os.path.join(workspace_root, "smp-segmentation", "run_segmentation.py"),
+                input_dir=camelia_input,
+                output_dir=camelia_temp,
+                workspace_root=workspace_root
+            )
+        elif args.seg_model_type == "sam3":
+            print("Selected segmentation model: SAM3", flush=True)
+            # Placeholder for SAM3 segmentation function, which would be implemented similarly to run_smp_segmentation
+            segmentation_success = run_sam3_segmentation(
+                model_type=args.model_type,
+                segmentation_script=os.path.join(workspace_root, "sam3-segmentation", "run_segmentation.py"),
+                input_dir=camelia_input,
+                output_dir=camelia_temp,
+                workspace_root=workspace_root
+            )
+        else:
+            raise ValueError(f"Unsupported segmentation model type: {args.seg_model_type}")
 
-    # Run segmentation
-    if args.seg_model_type == "smp":
-        print("Selected segmentation model: SMP", flush=True)
-        segmentation_success = run_smp_segmentation(
-            model_type=args.model_type,
-            segmentation_script=os.path.join(workspace_root, "smp-segmentation", "run_segmentation.py"),
-            input_dir=camelia_input,
-            output_dir=camelia_temp,
-            workspace_root=workspace_root
-        )
-    elif args.seg_model_type == "sam3":
-        print("Selected segmentation model: SAM3", flush=True)
-        # Placeholder for SAM3 segmentation function, which would be implemented similarly to run_smp_segmentation
-        segmentation_success = run_sam3_segmentation(
-            model_type=args.model_type,
-            segmentation_script=os.path.join(workspace_root, "sam3-segmentation", "run_segmentation.py"),
-            input_dir=camelia_input,
-            output_dir=camelia_temp,
-            workspace_root=workspace_root
-        )
+        if not segmentation_success:
+            print("Segmentation failed. Exiting pipeline.", flush=True)
+            return
     else:
-        raise ValueError(f"Unsupported segmentation model type: {args.seg_model_type}")
-
-    if not segmentation_success:
-        print("Segmentation failed. Exiting pipeline.", flush=True)
-        return
-
-    # Run inpainting
-    inpainting_success = run_inpainting(
-        in_dir=os.path.join(camelia_temp, "images"),
-        mask_dir=os.path.join(camelia_temp, "masks"),
-        out_dir=camelia_output,
-        checkpoint=os.path.join(workspace_root, "lama-inpainting", "pretrained", "best"),
-        inpainting_script=os.path.join(workspace_root, "lama-inpainting", "bin", "uncen.py"),
-        workspace_root=workspace_root
-    )
-    
-    if not inpainting_success:
-        print("Inpainting failed. Exiting pipeline.", flush=True)
-        return
+        print("Skipping segmentation step as --inpaint-only flag is set.", flush=True)
+        # Run inpainting
+        inpainting_success = run_inpainting(
+            in_dir=os.path.join(camelia_temp, "images"),
+            mask_dir=os.path.join(camelia_temp, "masks"),
+            out_dir=camelia_output,
+            checkpoint=os.path.join(workspace_root, "lama-inpainting", "pretrained", "best"),
+            inpainting_script=os.path.join(workspace_root, "lama-inpainting", "bin", "uncen.py"),
+            workspace_root=workspace_root
+        )
+        
+        if not inpainting_success:
+            print("Inpainting failed. Exiting pipeline.", flush=True)
+            return
     
     # Clean up temporary directory if args is set
     if args.clean_temp:
