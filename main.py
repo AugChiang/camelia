@@ -273,7 +273,20 @@ def main():
         if not segmentation_success:
             print("Segmentation failed. Exiting pipeline.", flush=True)
             return
-    else:
+        # Run inpainting
+        inpainting_success = run_inpainting(
+            in_dir=os.path.join(camelia_temp, "images"),
+            mask_dir=os.path.join(camelia_temp, "masks"),
+            out_dir=camelia_output,
+            checkpoint=os.path.join(workspace_root, "lama-inpainting", "pretrained", "best"),
+            inpainting_script=os.path.join(workspace_root, "lama-inpainting", "bin", "uncen.py"),
+            workspace_root=workspace_root
+        )
+        
+        if not inpainting_success:
+            print("Inpainting failed. Exiting pipeline.", flush=True)
+            return
+    else: # inpaint-only mode
         print("Skipping segmentation step as --inpaint-only flag is set.", flush=True)
         # Run inpainting
         inpainting_success = run_inpainting(
