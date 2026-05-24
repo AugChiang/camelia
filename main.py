@@ -7,19 +7,19 @@ import shutil
 def cli():
     parser = ArgumentParser(description="Pipeline to connect segmentation and inpainting.")
     parser.add_argument(
-        "--model_type", 
+        "--model-type", 
         required=True, 
         choices=["black_bars", "white_bars", "transparent_black"],
         help="Model type for segmentation."
     )
     parser.add_argument(
-        "--seg_model_type", 
+        "--seg-model-type", 
         default="smp", 
         choices=["smp", "sam3"],
         help="Segmentation model type for censor bars' segmentation."
     )
     parser.add_argument(
-        "--clean_temp",
+        "--clean-temp",
         action="store_true", 
         help="Delete temporary files after processing is complete."
     )

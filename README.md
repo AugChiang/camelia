@@ -72,10 +72,10 @@ Put the segmentation models in smp-segmentation/pretrained and inpainting model 
 2. Run:
 
     ```bash
-    python main.py --model_type <model_type>
+    python main.py --model-type <model-type>
     ```
 
-    Replace `<model_type>` with one of the following options:
+    Replace `<model-type>` with one of the following options:
 
     - `black_bars`
     - `white_bars`
@@ -105,9 +105,10 @@ Put the segmentation models in smp-segmentation/pretrained and inpainting model 
 -   [Er0manga](https://github.com/Er0manga/Er0mangaDemo)
 -   [smp](https://github.com/qubvel-org/segmentation_models.pytorch)
 -   [lama](https://github.com/advimman/lama)
+-   [SAM3](https://github.com/facebookresearch/sam3)
 
 ## Disclaimer
 
-This project is intended for personal use only. Do not share the results on public sites. If you choose to do so anyway, please do not credit me or Camelia.
+This project is intended for personal use only. **DO NOT** share the results on public sites. If you choose to do so anyway, please **DO NOT** credit me or Camelia.
 
 Sharing the tool is welcomed. A ☆ would also be greatly appreciated.
