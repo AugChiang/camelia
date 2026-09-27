@@ -151,6 +151,7 @@ class MaskEditor:
         self._render_job = None
         self._photo = None
         self._fitted = False
+        self._cursor_position = None
         root.title("Camelia mask editor")
         root.geometry("1100x820")
         root.minsize(720, 480)
@@ -199,7 +200,7 @@ class MaskEditor:
         viewport.pack(fill="both", expand=True)
         viewport.rowconfigure(0, weight=1)
         viewport.columnconfigure(0, weight=1)
-        self.canvas = tk.Canvas(viewport, background="#282831", highlightthickness=0, cursor="crosshair")
+        self.canvas = tk.Canvas(viewport, background="#282831", highlightthickness=0, cursor="arrow")
         self.canvas.grid(row=0, column=0, sticky="nsew")
         horizontal = ttk.Scrollbar(viewport, orient="horizontal", command=self.scroll_x)
         horizontal.grid(row=1, column=0, sticky="ew")
@@ -207,7 +208,9 @@ class MaskEditor:
         vertical.grid(row=0, column=1, sticky="ns")
         self.canvas.configure(xscrollcommand=horizontal.set, yscrollcommand=vertical.set)
         self._image_item = self.canvas.create_image(0, 0, anchor="nw")
-        self._cursor_item = self.canvas.create_oval(0, 0, 0, 0, outline="#ff40a0", width=2, state="hidden")
+        # A black rim and white outline remain visible on manga and the mask overlay.
+        self._cursor_halo = self.canvas.create_oval(0, 0, 0, 0, outline="black", width=3, state="hidden")
+        self._cursor_item = self.canvas.create_oval(0, 0, 0, 0, outline="white", width=1, state="hidden")
         self.canvas.bind("<ButtonPress-1>", self.press)
         self.canvas.bind("<B1-Motion>", self.drag)
         self.canvas.bind("<ButtonRelease-1>", self.release)
@@ -215,7 +218,8 @@ class MaskEditor:
         self.canvas.bind("<B3-Motion>", self.drag)
         self.canvas.bind("<ButtonRelease-3>", self.release)
         self.canvas.bind("<Motion>", self.move_cursor)
-        self.canvas.bind("<Leave>", lambda event: self.canvas.itemconfigure(self._cursor_item, state="hidden"))
+        self.canvas.bind("<Enter>", self.move_cursor)
+        self.canvas.bind("<Leave>", self.hide_cursor)
         self.canvas.bind("<Configure>", self.resize)
         self.canvas.bind("<MouseWheel>", self.wheel)
         self.canvas.bind("<Button-4>", lambda event: self.zoom(1.25, event))
@@ -246,7 +250,7 @@ class MaskEditor:
         self.brush_size.set(max(1, round(float(value))))
         self.brush_label.set(f"Brush: {self.brush_size.get()} px")
         if hasattr(self, "canvas"):
-            self.canvas.itemconfigure(self._cursor_item, state="hidden")
+            self.update_cursor()
 
     def point(self, event):
         x, y = self.canvas.canvasx(event.x) / self.scale, self.canvas.canvasy(event.y) / self.scale
@@ -255,14 +259,35 @@ class MaskEditor:
         return None
 
     def move_cursor(self, event):
-        if self.point(event) is None:
+        self._cursor_position = event.x, event.y
+        self.update_cursor()
+
+    def hide_cursor(self, event=None):
+        self._cursor_position = None
+        self.update_cursor()
+
+    def update_cursor(self):
+        if self._cursor_position is None:
+            self.canvas.itemconfigure(self._cursor_halo, state="hidden")
             self.canvas.itemconfigure(self._cursor_item, state="hidden")
+            self.canvas.configure(cursor="arrow")
             return
-        x, y = self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)
+        pointer_x, pointer_y = self._cursor_position
+        x, y = self.canvas.canvasx(pointer_x), self.canvas.canvasy(pointer_y)
+        if not (0 <= pointer_x < self.canvas.winfo_width()
+                and 0 <= pointer_y < self.canvas.winfo_height()
+                and 0 <= x < self.document.image.width * self.scale
+                and 0 <= y < self.document.image.height * self.scale):
+            self.canvas.itemconfigure(self._cursor_halo, state="hidden")
+            self.canvas.itemconfigure(self._cursor_item, state="hidden")
+            self.canvas.configure(cursor="arrow")
+            return
         radius = self.brush_size.get() * self.scale / 2
-        self.canvas.coords(self._cursor_item, x-radius, y-radius, x+radius, y+radius)
-        self.canvas.itemconfigure(self._cursor_item, state="normal")
-        self.canvas.tag_raise(self._cursor_item)
+        for item in (self._cursor_halo, self._cursor_item):
+            self.canvas.coords(item, x-radius, y-radius, x+radius, y+radius)
+            self.canvas.itemconfigure(item, state="normal")
+            self.canvas.tag_raise(item)
+        self.canvas.configure(cursor="none")
 
     def press(self, event, erase=False):
         self.release()
@@ -342,7 +367,7 @@ class MaskEditor:
             self.page_choice.current(self.index)
             return
         self.document, self.index = document, index
-        self.canvas.itemconfigure(self._cursor_item, state="hidden")
+        self.hide_cursor()
         self.fit()
         self.update_status()
 
@@ -386,7 +411,6 @@ class MaskEditor:
         self.configure_view()
         self.canvas.xview_moveto(max(0, source_x*self.scale-anchor_x) / (self.document.image.width*self.scale))
         self.canvas.yview_moveto(max(0, source_y*self.scale-anchor_y) / (self.document.image.height*self.scale))
-        self.canvas.itemconfigure(self._cursor_item, state="hidden")
         self.schedule_render()
 
     def zoom(self, factor, event=None):
@@ -406,6 +430,7 @@ class MaskEditor:
 
     def pan(self, event):
         self.canvas.scan_dragto(event.x, event.y, gain=1)
+        self.move_cursor(event)
         self.schedule_render()
 
     def resize(self, event):
@@ -415,6 +440,7 @@ class MaskEditor:
             self.schedule_render()
 
     def schedule_render(self):
+        self.update_cursor()
         if self._render_job is None:
             self._render_job = self.root.after(16, self.render)
 
@@ -428,6 +454,7 @@ class MaskEditor:
         top = max(0, math.floor(self.canvas.canvasy(0) / self.scale))
         right = min(self.document.image.width, math.ceil(self.canvas.canvasx(self.canvas.winfo_width()) / self.scale))
         bottom = min(self.document.image.height, math.ceil(self.canvas.canvasy(self.canvas.winfo_height()) / self.scale))
+        self.update_cursor()
         if right <= left or bottom <= top:
             return
         preview = self.document.preview((left, top, right, bottom))
@@ -436,6 +463,7 @@ class MaskEditor:
         self._photo = ImageTk.PhotoImage(preview, master=self.root)
         self.canvas.coords(self._image_item, left*self.scale, top*self.scale)
         self.canvas.itemconfigure(self._image_item, image=self._photo)
+        self.canvas.tag_raise(self._cursor_halo)
         self.canvas.tag_raise(self._cursor_item)
 
 

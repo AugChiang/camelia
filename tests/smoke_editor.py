@@ -45,6 +45,38 @@ def main():
         editor.set_zoom(2)
         root.update()
 
+        def hover(point):
+            x = round(point[0] * editor.scale - editor.canvas.canvasx(0))
+            y = round(point[1] * editor.scale - editor.canvas.canvasy(0))
+            editor.canvas.event_generate("<Motion>", x=x, y=y)
+            root.update()
+
+        def check_cursor(diameter):
+            assert editor.canvas.cget("cursor") == "none"
+            for item in (editor._cursor_halo, editor._cursor_item):
+                assert editor.canvas.itemcget(item, "state") == "normal"
+                x0, y0, x1, y1 = editor.canvas.coords(item)
+                assert abs((x1 - x0) - diameter) < 0.01
+                assert abs((y1 - y0) - diameter) < 0.01
+
+        hover((90, 62))
+        check_cursor(34)
+        editor.brush_slider.set(31)
+        check_cursor(62)  # Resizing a stationary cursor updates its footprint.
+        editor.set_zoom(1)
+        check_cursor(31)  # Zoom updates the circle without another mouse movement.
+        editor.canvas.event_generate("<Leave>")
+        root.update()
+        assert editor.canvas.cget("cursor") == "arrow"
+        assert editor.canvas.itemcget(editor._cursor_item, "state") == "hidden"
+        assert editor.canvas.itemcget(editor._cursor_halo, "state") == "hidden"
+        hover((200, 140))  # Blank canvas outside the source uses the normal pointer.
+        assert editor.canvas.cget("cursor") == "arrow"
+        editor.brush_slider.set(17)
+        editor.set_zoom(2)
+        hover((90, 62))
+        check_cursor(34)
+
         def stroke(start, end, button=1):
             def coordinates(point):
                 return (round(point[0] * editor.scale - editor.canvas.canvasx(0)),
@@ -57,6 +89,7 @@ def main():
             root.update()
 
         stroke((68, 62), (113, 62))
+        check_cursor(34)
         assert editor.document.mask.getpixel((90, 62)) == 255
         editor.render()
         assert editor._photo is not None
@@ -74,6 +107,7 @@ def main():
         editor.set_zoom(0.75)
         root.update()
         stroke((68, 62), (113, 62))
+        check_cursor(12.75)
         # An unsaved page cannot be lost when navigation is cancelled.
         with patch.object(editor.messagebox, "askyesnocancel", return_value=None):
             editor.previous_button.invoke()

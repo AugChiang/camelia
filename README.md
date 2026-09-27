@@ -83,6 +83,8 @@ The editor includes undo/redo (**Ctrl+Z/Ctrl+Y**), clear mask, zoom buttons and
 mouse-wheel zoom, **Fit**, **100%**, scrollbars, and middle-button dragging to pan.
 Right-button dragging erases regardless of the selected tool. Brush diameter is
 measured in original-image pixels, so it remains consistent when zooming.
+The cursor is a black-and-white circle matching the brush diameter at the current
+zoom, and updates as you change the brush size or zoom.
 
 Tkinter and a desktop display are required for the local window. Python/Conda on
 Windows normally includes Tk support; on other systems install Python's Tk support
