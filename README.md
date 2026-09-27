@@ -1,114 +1,212 @@
-<div align="center">
-  <a href="https://github.com/windbow27/camelia">
-    <img src="https://raw.githubusercontent.com/windbow27/camelia/refs/heads/main/camelia-ui/public/logo.png" width="125" alt="Camelia Logo">
-  </a>
-  
-  # Camelia
-</div>
+# Camelia CLI
 
-Camelia is an image decensor tool to remove censorship bars from images (you know what kind of images I am talking about). It supports black bars, white bars, and transparent black censorship types.
+Camelia segments selected regions and fills them with LaMa. This branch,
+`feat/cli-only`, contains the command-line pipeline and a minimal local brush
+editor. The full web interface belongs on `feat/gradio`; this branch does not
+depend on Flask, Gradio, Nuxt, or Node.js.
+
+Segmentation artifacts are persistent. `--segment-only` opens the brush editor
+after saving them. Edit the masks, save, and run inpainting without regenerating them.
 
 ## Installation
 
-### Prerequisites
+The existing SMP and LaMa checkpoints use the legacy Python 3.9 / PyTorch 1.13
+environment. Install its inference requirements:
 
--   Python 3.9
--   Conda (recommended for managing environments)
--   NVIDIA GPU with CUDA support (optional but recommended for faster processing)
--   Node.js 16+ (for Web UI)
+```bash
+conda create --name camelia_env python=3.9 -y
+conda activate camelia_env
+pip install -r requirements.txt
+```
 
-### Steps
+The requirements select the CUDA 11.6 PyTorch wheels. For CPU-only installation,
+install the corresponding CPU Torch/Torchvision wheels and the remaining listed
+dependencies. Runtime `--device auto` selects CUDA when available, otherwise CPU.
 
-1. Clone the repository:
+Download the existing [SMP and LaMa checkpoints](https://drive.google.com/drive/folders/1AAyv6ms_694VGEtET6TFRLKZ1rx7ue11?usp=sharing):
 
-    ```bash
-    git clone https://github.com/windbow27/camelia
-    cd camelia
-    ```
+```text
+smp-segmentation/pretrained/best_black_bars_model.pth
+smp-segmentation/pretrained/best_white_bars_model.pth
+smp-segmentation/pretrained/best_transparent_black_model.pth
+lama-inpainting/pretrained/best/config.yaml
+lama-inpainting/pretrained/best/models/best.ckpt
+```
 
-2. Create a Conda environment:
+Legacy checkpoints contain serialized training metadata; use checkpoints from a
+trusted source. Only the LaMa generator is instantiated for inference. Lightning
+remains a dependency because the legacy checkpoint metadata references its classes.
 
-    ```bash
-    conda create --name camelia_env python=3.9 -y
-    conda activate camelia_env
-    ```
+## Segment, edit, then inpaint
 
-3. Install dependencies:
+Place images under `camelia-decensor/input/black_bars/`, including chapter
+subdirectories, or supply any image directory with `--input-dir`.
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+```bash
+python main.py --model-type black_bars --segment-only
+```
 
-4. Verify PyTorch installation:
-   Ensure that PyTorch is installed with CUDA support (if applicable):
+The default retained directory is `camelia-decensor/intermediate/black_bars/`:
 
-    ```bash
-    python -c "import torch; print(torch.cuda.is_available())"
-    ```
+```text
+images/chapter/page.png          # RGB source image, at original dimensions
+masks/chapter/page.png           # editable grayscale PNG: black=keep, white=inpaint
+probabilities/chapter/page.png   # confidence preview, scaled directly from 0..1
+manifest.json                   # source paths, dimensions, and artifact paths
+```
 
-    This should return `True` if CUDA is available.
+The brush editor loads the retained source images and segmentation masks. Paint
+directly over the image: a **semi-transparent magenta overlay** shows the selected
+inpainting region. Adjust brush diameter with the slider, select **Paint** or
+**Erase**, and use **Previous**, **Next**, or the page dropdown to review all images.
+Existing detected regions are shown in the same overlay.
 
-5. For Web UI, install Node.js dependencies:
-    ```bash
-    cd camelia-ui
-    npm install
-    cd ..
-    ```
+Click **Save mask** (or press **Ctrl+S**) to update the PNG under `masks/`, or
+**Save and next** to save and advance. Close the editor when finished. The editor
+asks before leaving a page or closing with unsaved changes. Saves contain only
+black (0, preserve) and white (255, inpaint), at the original dimensions; the
+colored overlay is never saved into the source image or mask.
 
-### Models
+Then reuse your edited masks:
 
-Download the models here: [models](https://drive.google.com/drive/folders/1AAyv6ms_694VGEtET6TFRLKZ1rx7ue11?usp=sharing)
+```bash
+python main.py --model-type black_bars --inpaint-only
+```
 
-Put the segmentation models in smp-segmentation/pretrained and inpainting model (the whole folder) in lama-inpainting/pretrained.
+Reopen the editor without rerunning segmentation or inpainting:
 
-## Usage
+```bash
+python main.py --model-type black_bars --edit-masks
+```
 
-### CLI Mode
+The editor includes undo/redo (**Ctrl+Z/Ctrl+Y**), clear mask, zoom buttons and
+mouse-wheel zoom, **Fit**, **100%**, scrollbars, and middle-button dragging to pan.
+Right-button dragging erases regardless of the selected tool. Brush diameter is
+measured in original-image pixels, so it remains consistent when zooming.
 
-1. Place your input images in the correct `camelia-decensor/input` directory (`input/black_bars`, `input/white_bars`, `input/transparent_black`)
+Tkinter and a desktop display are required for the local window. Python/Conda on
+Windows normally includes Tk support; on other systems install Python's Tk support
+if needed. No additional pip GUI package is required. For batch/headless use:
 
-    - Subdirectories can be used
+```bash
+python main.py --model-type black_bars --segment-only --no-edit
+```
 
-2. Run:
+If opening the editor fails, the generated segmentation artifacts are still retained.
 
-    ```bash
-    python main.py --model-type <model-type>
-    ```
+To keep several review sessions or use a separate edited-mask directory:
 
-    Replace `<model-type>` with one of the following options:
+```bash
+python main.py --model-type black_bars --segment-only --input-dir ./pages --intermediate-dir ./review/chapter01
+python main.py --edit-masks --intermediate-dir ./review/chapter01 --mask-dir ./edited-masks
+python main.py --inpaint-only --intermediate-dir ./review/chapter01 --mask-dir ./edited-masks --output-dir ./results/chapter01
+```
 
-    - `black_bars`
-    - `white_bars`
-    - `transparent_black`
+An empty custom mask directory starts with blank masks; save every desired page
+before inpainting. Omit `--mask-dir` to edit the existing segmentation masks directly.
 
-3. The output will be saved under `camelia-decensor/output`.
+No intermediate images, masks, or probability previews are automatically deleted.
+Regenerating existing segmentation artifacts or final outputs requires `--overwrite`.
+The editor's **Save mask** button intentionally replaces the selected page's mask.
+Be careful:
+rerunning segmentation with this flag also replaces edited masks. Use
+`--inpaint-only --overwrite` to regenerate only the final outputs.
 
-### Web UI Mode
+To run both stages together:
 
-1. Start the API server, make sure to use the correct environment:
+```bash
+python main.py --model-type transparent_black
+```
 
-    ```bash
-    python api.py
-    ```
+The model types are `black_bars`, `white_bars`, and `transparent_black`. Outputs
+default to `camelia-decensor/output/<model-type>/`. JPEG/WebP inputs are decoded
+directly, and retained images and masks use PNG. Subdirectories are preserved;
+ambiguous inputs such as `page.jpg` and `page.png` in one folder are rejected.
 
-2. In a separate terminal, start the web UI:
+## Mask and inpainting controls
 
-    ```bash
-    cd camelia-ui
-    npm run dev
-    ```
+- `--mask-threshold 0.5`: cutoff for segmentation probabilities. Lower it to select
+  more uncertain pixels; inspect the result before inpainting.
+- `--mask-dilation 2`: expand the working mask by two pixels when unwanted borders
+  remain. Default is zero; the saved mask is not modified.
+- `--blend-radius 3`: optionally soften the replacement inside mask edges. Default
+  is zero, which fully replaces selected pixels. Pixels outside the working mask
+  remain unchanged.
+- `--context-scale 1.2`: surrounding crop context relative to the selected region's
+  longest side. Crops are at least 64 pixels wide and aligned to multiples of eight.
+  Increase context when nearby lines or textures should guide reconstruction.
+- `--debug-dir ./debug`: save mask overlays and output comparisons. Debug images
+  are only allocated when requested.
+- `--device cpu` or `--device cuda:0`: explicitly select an inference device.
+- `--checkpoint PATH` and `--seg-checkpoint PATH`: use alternative model weights.
 
-3. Open your browser and navigate to http://localhost:3000
+Masks passed to LaMa are **binary 0/1**. Edited PNG values below 128 become zero;
+values at least 128 become one. Mask size mismatches are rejected rather than
+silently resized. Empty masks produce an unchanged image without loading LaMa.
+Small selections are preserved rather than discarded by area filters.
+
+For manga, a hard mask is the default because it clearly identifies all pixels
+that must be reconstructed. A soft alpha can retain parts of an unwanted mark.
+Feathering is an optional compositing operation, separate from the model mask.
+This matches the binary-mask inference in [upstream LaMa](https://github.com/advimman/lama/blob/main/bin/predict.py).
+
+## SAM3 in a separate environment
+
+SAM3 and the legacy SMP/LaMa dependencies cannot share the pinned NumPy/Torch
+environment. Initialize the submodule with `git submodule update --init --recursive`,
+create a separate environment, and follow the checked-out [SAM3 installation
+instructions](sam3/README.md) for its Python, Torch, and CUDA requirements. Then:
+
+```bash
+pip install -r requirements-sam3.txt
+```
+
+Put the SAM3 checkpoint at `sam3/pretrained/sam3.pt`. Select its interpreter while
+keeping the current environment for LaMa:
+
+```bash
+python main.py --model-type black_bars --seg-model-type sam3 --seg-python /path/to/sam3/python --segment-only
+python main.py --model-type black_bars --inpaint-only
+```
+
+On Windows, use the environment's `python.exe` path. `--inpaint-python` also allows
+an explicit LaMa environment. Model loading happens once per stage and models are
+released when the stage exits, avoiding simultaneous residency of both models.
+
+## Validation
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Tests cover mask thresholds, reflection at crop borders, tiny regions, untouched
+pixels, overwrite protection, retained artifacts, and CLI failures. They do not
+require model checkpoints or a GPU.
+
+Editor tests additionally cover continuous strokes, erasing, overlays, binary
+saving, page paths, undo/redo, and CLI launch behavior. An optional desktop test
+exercises real Tk canvas events and page navigation, then checks LaMa handoff:
+
+```bash
+python tests/smoke_editor.py --inpaint
+```
+
+An optional real-checkpoint test uses synthetic geometric pages in PNG/JPEG/WebP,
+simulates mask edits, and checks that LaMa preserves edits and unselected pixels:
+
+```bash
+python tests/smoke_inference.py --device cuda
+```
+
+It retains its artifacts under `.test-output/` for inspection.
+
+The local editor and future Gradio integration are described in
+[docs/mask-editor-plan.md](docs/mask-editor-plan.md). Both use the same hard-mask
+artifact contract; inference remains independent of the interface.
 
 ## Acknowledgments
 
--   [Er0manga](https://github.com/Er0manga/Er0mangaDemo)
--   [smp](https://github.com/qubvel-org/segmentation_models.pytorch)
--   [lama](https://github.com/advimman/lama)
--   [SAM3](https://github.com/facebookresearch/sam3)
-
-## Disclaimer
-
-This project is intended for personal use only. **DO NOT** share the results on public sites. If you choose to do so anyway, please **DO NOT** credit me or Camelia.
-
-Sharing the tool is welcomed. A ☆ would also be greatly appreciated.
+[SMP](https://github.com/qubvel-org/segmentation_models.pytorch),
+[LaMa](https://github.com/advimman/lama),
+[SAM3](https://github.com/facebookresearch/sam3), and
+[Er0manga](https://github.com/Er0manga/Er0mangaDemo).

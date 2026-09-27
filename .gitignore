@@ -9,6 +9,10 @@
 temp
 
 __pycache__/
+.test-output/
+.pytest_cache/
+camelia-decensor/intermediate/
+camelia-decensor/output/
 
 # settings
 .gemini

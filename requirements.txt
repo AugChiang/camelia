@@ -1,23 +1,13 @@
-pyyaml
-tqdm
-numpy==1.24.3
-easydict==1.9.0
-scikit-image
-scikit-learn
-opencv-python
-matplotlib
-pandas
-albumentations==0.5.2
-hydra-core==1.1.0
-pytorch-lightning==1.2.9
-kornia==0.5.0
-webdataset
-packaging
-wldhx.yadisk-direct
-segmentation-models-pytorch
+# SMP + LaMa inference environment (Python 3.9).
+# Install SAM3 in a separate environment; select it with --seg-python.
+--find-links https://download.pytorch.org/whl/torch_stable.html
 torch==1.13.1+cu116
 torchvision==0.14.1+cu116
--f https://download.pytorch.org/whl/torch_stable.html
-flask
-flask-cors
+numpy==1.24.3
+segmentation-models-pytorch==0.5.0
+opencv-python==4.11.0.86
 pillow
+omegaconf>=2.1,<3
+kornia==0.5.0
+# Legacy .ckpt metadata references Lightning callback classes during loading.
+pytorch-lightning==1.2.9

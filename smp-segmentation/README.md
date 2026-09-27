@@ -1,50 +1,30 @@
-# SMP Segmentation Module
+# SMP segmentation CLI
 
-## Overview
-
-This module contains the segmentation component of the Camelia project. It uses [Segmentation Models PyTorch (SMP)](https://github.com/qubvel/segmentation_models.pytorch) to detect and create masks of censored areas in images
-
-## Usage
-
-### Command Line Interface
-
-Run the segmentation on images with:
+Run through the main pipeline to retain editable masks:
 
 ```bash
-python run_segmentation.py --model_type <model_type> [--input_dir <input_dir>] [--output_dir <output_dir>]
+python main.py --model-type black_bars --segment-only
 ```
 
-Arguments:
+This opens the local brush editor after segmentation. Paint or erase the magenta
+overlay and save the mask, then run `--inpaint-only`. Add `--no-edit` for headless
+segmentation, or use `--edit-masks` to reopen existing masks later.
 
--   `--model_type`: Type of censorship to detect (Required)
-    -   Options: `black_bars`, `white_bars`, `transparent_black`
--   `--input_dir`: Base input directory (Optional, default: "input")
--   `--output_dir`: Output directory for segmentation results (Optional, default: "output/")
-
-### Input/Output Structure
-
--   **Input**: Place images in the corresponding subdirectory under the input directory:
-
-    -   `input/black_bars/`
-    -   `input/white_bars/`
-    -   `input/transparent_black/`
-
--   **Output**: Results are saved in the output directory with the following structure:
-    -   `output/images/`: Original images
-    -   `output/masks/`: Generated masks showing detected censored areas
-
-## Pre-trained Models
-
-The module includes pre-trained models for each censorship type:
-
--   `pretrained/best_black_bars_model.pth`
--   `pretrained/best_white_bars_model.pth`
--   `pretrained/best_transparent_black_model.pth`
-
-## Training
-
-To train a new segmentation model, use the Jupyter notebook:
+The adapter can also run directly from any working directory:
 
 ```bash
-jupyter notebook train_segmentation.ipynb
+python smp-segmentation/run_segmentation.py --model-type black_bars --input-dir ./pages --output-dir ./review
 ```
+
+`--input-dir` is the actual image directory, scanned recursively. If omitted,
+the default is `camelia-decensor/input/<model-type>/`. Its underscore alias has
+the same semantics; no model-type subdirectory is appended to an explicit path.
+
+The adapter retains RGB PNGs in `images/`, binary grayscale PNGs in `masks/`,
+absolute confidence previews in `probabilities/`, and `manifest.json` metadata.
+The default mask threshold is 0.5. Use `--mask-threshold` to change it and
+`--overwrite` only when replacing existing masks is intended.
+
+The EfficientNet-B6 Unet++ preprocessing remains grayscale, 1024x1024 nearest
+resizing, and ImageNet normalization to match the existing pretrained weights.
+Non-PNG inputs are decoded directly without temporary conversion files.

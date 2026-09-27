@@ -9,7 +9,6 @@ import traceback
 import warnings
 
 import torch
-from pytorch_lightning import seed_everything
 
 LOGGER = logging.getLogger(__name__)
 
@@ -114,6 +113,8 @@ def handle_deterministic_config(config):
     if seed is None:
         return False
 
+    # Training-only dependency; CLI generator inference does not need Lightning.
+    from pytorch_lightning import seed_everything
     seed_everything(seed)
     return True
 

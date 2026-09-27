@@ -1,0 +1,6 @@
+# Install a compatible CUDA PyTorch + torchvision build in the SAM3 environment first.
+# Follow sam3/README.md for the checked-out submodule's runtime requirements.
+-e ./sam3
+opencv-python
+pillow
+einops
