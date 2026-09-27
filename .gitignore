@@ -17,3 +17,6 @@ camelia-decensor/output/
 # settings
 .gemini
 .vscode
+
+# tests
+*.ipynb
