@@ -42,7 +42,8 @@ Optional feathering belongs to output compositing; dilation and feathering are
 separate CLI controls and default to zero. Hard masks do not guarantee accurate
 linework or reconstruction; checkpoint quality and surrounding context still matter.
 
-The implementation is in `camelia/editor.py`. The document/stroke model is
+The implementation is in the `mask-editor` submodule, exposed through
+`camelia/editor.py` for the existing CLI. The document/stroke model is
 independent of Tk widgets and model inference. The editor requires Pillow and
 Python's Tk support; it has no GPU, Gradio, server, or Node.js dependency.
 

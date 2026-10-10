@@ -5,6 +5,13 @@ Camelia segments selected regions and fills them with LaMa. This branch,
 editor. The full web interface belongs on `feat/gradio`; this branch does not
 depend on Flask, Gradio, Nuxt, or Node.js.
 
+The brush editor lives in the reusable `mask-editor` submodule. After cloning,
+initialize submodules before installing dependencies:
+
+```bash
+git submodule update --init mask-editor
+```
+
 Segmentation artifacts are persistent. `--segment-only` opens the brush editor
 after saving them. Edit the masks, save, and run inpainting without regenerating them.
 
@@ -93,6 +100,10 @@ if needed. No additional pip GUI package is required. For batch/headless use:
 ```bash
 python main.py --model-type black_bars --segment-only --no-edit
 ```
+
+The editor can also run on its own with `python -m mask_editor IMAGES MASKS` after
+installation. Its package API and standalone setup are documented in
+[mask-editor/README.md](mask-editor/README.md).
 
 If opening the editor fails, the generated segmentation artifacts are still retained.
 

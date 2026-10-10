@@ -1,3 +1,6 @@
 [submodule "sam3"]
 	path = sam3
 	url = https://github.com/AugChiang/sam3.git
+[submodule "mask-editor"]
+	path = mask-editor
+	url = https://github.com/AugChiang/mask-editor.git
