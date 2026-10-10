@@ -104,7 +104,7 @@ python main.py --model-type black_bars --segment-only --no-edit
 To add masks to clean images without running segmentation, launch the editor with:
 
 ```bash
-python -m mask_editor --input-dir ./clean-pages
+python ./mask-editor/main.py --input-dir ./clean-pages
 ```
 
 Saved masks go to `./clean-pages/mask/`, preserving subdirectories. The editor
