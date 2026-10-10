@@ -101,8 +101,15 @@ if needed. No additional pip GUI package is required. For batch/headless use:
 python main.py --model-type black_bars --segment-only --no-edit
 ```
 
-The editor can also run on its own with `python -m mask_editor IMAGES MASKS` after
-installation. Its package API and standalone setup are documented in
+To add masks to clean images without running segmentation, launch the editor with:
+
+```bash
+python -m mask_editor --input-dir ./clean-pages
+```
+
+Saved masks go to `./clean-pages/mask/`, preserving subdirectories. The editor
+also supports draggable, resizable, rotatable rectangles. Its package API and
+standalone setup are documented in
 [mask-editor/README.md](mask-editor/README.md).
 
 If opening the editor fails, the generated segmentation artifacts are still retained.
